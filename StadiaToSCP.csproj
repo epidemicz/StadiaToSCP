@@ -96,7 +96,7 @@
     <Compile Include="ScpDriverInterface\ScpBus.cs" />
     <Compile Include="ScpDriverInterface\X360Buttons.cs" />
     <Compile Include="ScpDriverInterface\X360Controller.cs" />
-    <Compile Include="Xiaomi_gamepad.cs" />
+    <Compile Include="StadiaController.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

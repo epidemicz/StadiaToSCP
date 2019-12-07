@@ -45,6 +45,7 @@ namespace StadiaToSCP
 		{
 			if (!IsSingleInstance()) Environment.Exit(0);
 			NIcon = new NotifyIcon();
+			//ScpBus scpBus = null;
 			ScpBus scpBus = new ScpBus();
 			scpBus.UnplugAll();
 			global_scpBus = scpBus;
@@ -107,9 +108,9 @@ namespace StadiaToSCP
 		private static void ManageControllers(ScpBus scpBus)
 		{
 			var nrConnected = 0;
-			while (true)
+			//while (true)
 			{
-				var compatibleDevices = HidDevices.Enumerate(0x2717, 0x3144).ToList();
+				var compatibleDevices = HidDevices.Enumerate(0x18D1, 0x9400).ToList();
 				var existingDevices = Gamepads.Select(g => g.Device).ToList();
 				var newDevices = compatibleDevices.Where(d => !existingDevices.Select(e => e.DevicePath).Contains(d.DevicePath));
 				foreach (var gamepad in Gamepads.ToList())
@@ -151,13 +152,13 @@ namespace StadiaToSCP
 						}
 					}
 
-					byte[] vibration = { 0x20, 0x00, 0x00 };
-					if (device.WriteFeatureData(vibration) == false)
-					{
-						InformUser("Could not write to gamepad (is it closed?), skipping");
-						device.CloseDevice();
-						continue;
-					}
+					//byte[] vibration = { 0x20, 0x00, 0x00 };
+					//if (device.WriteFeatureData(vibration) == false)
+					//{
+					//	InformUser("Could not write to gamepad (is it closed?), skipping");
+					//	device.CloseDevice();
+					//	continue;
+					//}
 
 					byte[] serialNumber;
 					byte[] product;
@@ -177,7 +178,7 @@ namespace StadiaToSCP
 				{
 					InformUser($"{Gamepads.Count} controllers connected");
 				}
-				Thread.Sleep(1000);
+				//Thread.Sleep(1000);
 			}
 		}
 
@@ -214,6 +215,7 @@ namespace StadiaToSCP
 
 			//// Display toast
 			//ToastNotificationManager.CreateToastNotifier().Show(toast);
+			Console.WriteLine( text );
 		}
 
 		public static List<StadiaController> Gamepads { get; set; } = new List<StadiaController>();

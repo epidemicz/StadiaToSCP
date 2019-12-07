@@ -21,7 +21,7 @@ namespace StadiaToSCP
 			Index = index;
 			ScpBus = scpBus;
 			Device = device;
-			Device.WriteFeatureData(Vibration);
+			//Device.WriteFeatureData(Vibration);
 
 			rThread = new Thread(() => rumble_thread(Device));
 			// rThread.Priority = ThreadPriority.BelowNormal; 
@@ -34,7 +34,8 @@ namespace StadiaToSCP
 
 		public bool check_connected()
 		{
-			return Device.WriteFeatureData(Vibration);
+			return true;
+			//Device.WriteFeatureData(Vibration);
 		}
 
 		public void unplug()
@@ -57,8 +58,8 @@ namespace StadiaToSCP
 					local_vibration[2] = Vibration[2];
 					local_vibration[1] = Vibration[1];
 					rumble_mutex.ReleaseMutex();
-					Device.WriteFeatureData(local_vibration);
-					//Console.WriteLine("Big Motor: {0}, Small Motor: {1}", Vibration[2], Vibration[1]);
+					//Device.WriteFeatureData(local_vibration);
+					Console.WriteLine("Big Motor: {0}, Small Motor: {1}", Vibration[2], Vibration[1]);
 				}
 				else
 				{
@@ -72,7 +73,7 @@ namespace StadiaToSCP
 		{
 			scpBus.PlugIn(index);
 			X360Controller controller = new X360Controller();
-			int timeout = 30;
+			int timeout = 10000;
 			long last_changed = 0;
 			long last_mi_button = 0;
 			while (Running)
@@ -80,34 +81,32 @@ namespace StadiaToSCP
 				HidDeviceData data = Device.Read(timeout);
 				var currentState = data.Data;
 				bool changed = false;
-				if (data.Status == HidDeviceData.ReadStatus.Success && currentState.Length >= 21 && currentState[0] == 4)
+				if (data.Status == HidDeviceData.ReadStatus.Success && currentState.Length >= 10 && currentState[0] == 3)
 				{
 					//Console.WriteLine(Program.ByteArrayToHexString(currentState));
+					
 					X360Buttons Buttons = X360Buttons.None;
-					if ((currentState[1] & 1) != 0) Buttons |= X360Buttons.A;
-					if ((currentState[1] & 2) != 0) Buttons |= X360Buttons.B;
-					if ((currentState[1] & 8) != 0) Buttons |= X360Buttons.X;
-					if ((currentState[1] & 16) != 0) Buttons |= X360Buttons.Y;
-					if ((currentState[1] & 64) != 0) Buttons |= X360Buttons.LeftBumper;
-					if ((currentState[1] & 128) != 0) Buttons |= X360Buttons.RightBumper;
+					if ((currentState[3] &  64) != 0) Buttons |= X360Buttons.A;
+					if ((currentState[3] &  32) != 0) Buttons |= X360Buttons.B;
+					if ((currentState[3] &  16) != 0) Buttons |= X360Buttons.X;
+					if ((currentState[3] &   8) != 0) Buttons |= X360Buttons.Y;
+					if ((currentState[3] &   4) != 0) Buttons |= X360Buttons.LeftBumper;
+					if ((currentState[3] &   2) != 0) Buttons |= X360Buttons.RightBumper;
+					if ((currentState[3] &   1) != 0) Buttons |= X360Buttons.LeftStick;
+					if ((currentState[2] & 128) != 0) Buttons |= X360Buttons.RightStick;
 
-					if ((currentState[2] & 32) != 0) Buttons |= X360Buttons.LeftStick;
-					if ((currentState[2] & 64) != 0) Buttons |= X360Buttons.RightStick;
-
-					if (currentState[4] != 15)
+					//if (currentState[1] != 8)
 					{
-						if (currentState[4] == 0 || currentState[4] == 1 || currentState[4] == 7) Buttons |= X360Buttons.Up;
-						if (currentState[4] == 4 || currentState[4] == 3 || currentState[4] == 5) Buttons |= X360Buttons.Down;
-						if (currentState[4] == 6 || currentState[4] == 5 || currentState[4] == 7) Buttons |= X360Buttons.Left;
-						if (currentState[4] == 2 || currentState[4] == 1 || currentState[4] == 3) Buttons |= X360Buttons.Right;
+						if (currentState[1] == 0 || currentState[1] == 1 || currentState[1] == 7) Buttons |= X360Buttons.Up;
+						if (currentState[1] == 4 || currentState[1] == 3 || currentState[1] == 5) Buttons |= X360Buttons.Down;
+						if (currentState[1] == 6 || currentState[1] == 5 || currentState[1] == 7) Buttons |= X360Buttons.Left;
+						if (currentState[1] == 2 || currentState[1] == 1 || currentState[1] == 3) Buttons |= X360Buttons.Right;
 					}
 
-					if ((currentState[2] & 8) != 0) Buttons |= X360Buttons.Start;
-					if ((currentState[2] & 4) != 0) Buttons |= X360Buttons.Back;
+					if ((currentState[2] &  32) != 0) Buttons |= X360Buttons.Start;
+					if ((currentState[2] &  64) != 0) Buttons |= X360Buttons.Back;
 
-
-
-					if ((currentState[20] & 1) != 0)
+					if ((currentState[2] &  16) != 0)
 					{
 						last_mi_button = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
 						Buttons |= X360Buttons.Logo;
@@ -121,7 +120,7 @@ namespace StadiaToSCP
 						controller.Buttons = Buttons;
 					}
 
-					short LeftStickX = (short)((Math.Max(-127.0, currentState[5] - 128) / 127) * 32767);
+					short LeftStickX = (short)((Math.Max(-127.0, currentState[4] - 128) / 127) * 32767);
 					if (LeftStickX == -32767)
 						LeftStickX = -32768;
 					
@@ -131,7 +130,7 @@ namespace StadiaToSCP
 						controller.LeftStickX = LeftStickX;
 					}
 
-					short LeftStickY = (short)((Math.Max(-127.0, currentState[6] - 128) / 127) * -32767);
+					short LeftStickY = (short)((Math.Max(-127.0, currentState[5] - 128) / 127) * -32767);
 					if (LeftStickY == -32767)
 						LeftStickY = -32768;
 					
@@ -141,7 +140,7 @@ namespace StadiaToSCP
 						controller.LeftStickY = LeftStickY;
 					}
 
-					short RightStickX = (short)((Math.Max(-127.0, currentState[7] - 128) / 127) * 32767);
+					short RightStickX = (short)((Math.Max(-127.0, currentState[6] - 128) / 127) * 32767);
 					if (RightStickX == -32767)
 						RightStickX = -32768;
 					
@@ -151,7 +150,7 @@ namespace StadiaToSCP
 						controller.RightStickX = RightStickX;
 					}
 
-					short RightStickY = (short)((Math.Max(-127.0, currentState[8] - 128) / 127) * -32767);
+					short RightStickY = (short)((Math.Max(-127.0, currentState[7] - 128) / 127) * -32767);
 					if (RightStickY == -32767)
 						RightStickY = -32768;
 					
@@ -161,16 +160,16 @@ namespace StadiaToSCP
 						controller.RightStickY = RightStickY;
 					}
 
-					if (controller.LeftTrigger != currentState[11])
+					if (controller.LeftTrigger != currentState[8])
 					{
 						changed = true;
-						controller.LeftTrigger = currentState[11];
+						controller.LeftTrigger = currentState[8];
 					}
 
-					if (controller.RightTrigger != currentState[12])
+					if (controller.RightTrigger != currentState[9])
 					{
 						changed = true;
-						controller.RightTrigger = currentState[12];
+						controller.RightTrigger = currentState[9];
 
 					}
 				}
@@ -184,10 +183,10 @@ namespace StadiaToSCP
 				{
 					//Console.WriteLine("changed");
 					//Console.WriteLine((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond));
-					byte[] outputReport = new byte[8];
-					scpBus.Report(index, controller.GetReport(), outputReport);
+					//byte[] outputReport = new byte[8];
+					scpBus.Report(index, controller.GetReport(), null);
 
-					if (outputReport[1] == 0x08)
+					/*if (outputReport[1] == 0x08)
 					{
 						byte bigMotor = outputReport[3];
 						byte smallMotor = outputReport[4];
@@ -198,7 +197,7 @@ namespace StadiaToSCP
 							Vibration[2] = bigMotor;
 						}
 						rumble_mutex.ReleaseMutex();
-					}
+					}*/
 
 					if (last_mi_button != 0)
 					{
