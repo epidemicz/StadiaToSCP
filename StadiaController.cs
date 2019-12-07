@@ -11,7 +11,7 @@ namespace StadiaToSCP
 		public int Index;
 		private Thread rThread, iThread;
 		private ScpBus ScpBus;
-		private byte[] Vibration = { 0x20, 0x00, 0x00 };
+		private byte[] Vibration = { 0x05, 0x00, 0x00, 0x00, 0x00 };
 		private Mutex rumble_mutex = new Mutex();
 		private bool Running = true;
 		//private byte[] enableAccelerometer = { 0x31, 0x01, 0x08 };
@@ -21,7 +21,7 @@ namespace StadiaToSCP
 			Index = index;
 			ScpBus = scpBus;
 			Device = device;
-			//Device.WriteFeatureData(Vibration);
+			Device.Write(Vibration);
 
 			rThread = new Thread(() => rumble_thread(Device));
 			// rThread.Priority = ThreadPriority.BelowNormal; 
@@ -49,17 +49,19 @@ namespace StadiaToSCP
 
 		private void rumble_thread(HidDevice Device)
 		{
-			byte[] local_vibration = { 0x20, 0x00, 0x00 };
+			byte[] local_vibration = { 0x05, 0x00, 0x00, 0x00, 0x00 };
 			while (Running)
 			{
 				rumble_mutex.WaitOne();
-				if (local_vibration[2] != Vibration[2] || Vibration[1] != local_vibration[1])
+				if (local_vibration[3] != Vibration[3] || Vibration[1] != local_vibration[1])
 				{
-					local_vibration[2] = Vibration[2];
+					local_vibration[4] = Vibration[3];
+					local_vibration[3] = Vibration[3];
+					local_vibration[2] = Vibration[1];
 					local_vibration[1] = Vibration[1];
 					rumble_mutex.ReleaseMutex();
-					//Device.WriteFeatureData(local_vibration);
-					Console.WriteLine("Big Motor: {0}, Small Motor: {1}", Vibration[2], Vibration[1]);
+					Device.Write(local_vibration);
+					Console.WriteLine("Small Motor: {0}, Big Motor: {1}", Vibration[3], Vibration[1]);
 				}
 				else
 				{
@@ -183,21 +185,21 @@ namespace StadiaToSCP
 				{
 					//Console.WriteLine("changed");
 					//Console.WriteLine((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond));
-					//byte[] outputReport = new byte[8];
-					scpBus.Report(index, controller.GetReport(), null);
+					byte[] outputReport = new byte[8];
+					scpBus.Report(index, controller.GetReport(), outputReport);
 
-					/*if (outputReport[1] == 0x08)
+					if (outputReport[1] == 0x08)
 					{
 						byte bigMotor = outputReport[3];
 						byte smallMotor = outputReport[4];
 						rumble_mutex.WaitOne();
-						if (bigMotor != Vibration[2] || Vibration[1] != smallMotor)
+						if (smallMotor != Vibration[3] || Vibration[1] != bigMotor)
 						{
-							Vibration[1] = smallMotor;
-							Vibration[2] = bigMotor;
+							Vibration[1] = bigMotor;
+							Vibration[3] = smallMotor;
 						}
 						rumble_mutex.ReleaseMutex();
-					}*/
+					}
 
 					if (last_mi_button != 0)
 					{
