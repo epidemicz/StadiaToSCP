@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using mi.Properties;
+using StadiaToSCP.Properties;
 
-namespace mi
+namespace StadiaToSCP
 {
 	/// <summary>
 	/// 

@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using System.Drawing;
 
-namespace mi
+namespace StadiaToSCP
 {
 	/// <summary>
 	/// 

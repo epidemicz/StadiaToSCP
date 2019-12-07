@@ -9,7 +9,7 @@ using ScpDriverInterface;
 using System.Threading;
 using System.Runtime.InteropServices;
 
-namespace mi
+namespace StadiaToSCP
 {
 	class Program
 	{
@@ -171,7 +171,7 @@ namespace mi
 					{
 						index++;
 					}
-					Gamepads.Add(new Xiaomi_gamepad(device, scpBus, index));
+					Gamepads.Add(new StadiaController(device, scpBus, index));
 				}
 				if (Gamepads.Count != nrConnected)
 				{
@@ -216,7 +216,7 @@ namespace mi
 			//ToastNotificationManager.CreateToastNotifier().Show(toast);
 		}
 
-		public static List<Xiaomi_gamepad> Gamepads { get; set; } = new List<Xiaomi_gamepad>();
+		public static List<StadiaController> Gamepads { get; set; } = new List<StadiaController>();
 
 		private static bool TryReEnableDevice(string deviceInstanceId)
 		{

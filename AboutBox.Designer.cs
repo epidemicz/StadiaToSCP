@@ -1,4 +1,4 @@
-﻿namespace mi
+﻿namespace StadiaToSCP
 {
 	partial class AboutBox
 	{

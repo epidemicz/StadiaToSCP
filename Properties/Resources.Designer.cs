@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace mi.Properties {
+namespace StadiaToSCP.Properties {
     using System;
     
     

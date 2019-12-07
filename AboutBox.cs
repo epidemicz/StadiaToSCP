@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Windows.Forms;
 
-namespace mi
+namespace StadiaToSCP
 {
 	partial class AboutBox : Form
 	{

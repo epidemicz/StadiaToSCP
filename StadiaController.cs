@@ -3,9 +3,9 @@ using System.Threading;
 using HidLibrary;
 using ScpDriverInterface;
 
-namespace mi
+namespace StadiaToSCP
 {
-	public class Xiaomi_gamepad
+	public class StadiaController
 	{
 		public HidDevice Device { get; set; }
 		public int Index;
@@ -16,7 +16,7 @@ namespace mi
 		private bool Running = true;
 		//private byte[] enableAccelerometer = { 0x31, 0x01, 0x08 };
 
-		public Xiaomi_gamepad(HidDevice device, ScpBus scpBus, int index)
+		public StadiaController(HidDevice device, ScpBus scpBus, int index)
 		{
 			Index = index;
 			ScpBus = scpBus;
