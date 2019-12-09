@@ -137,23 +137,23 @@ namespace StadiaToSCP
 							try
 							{
 								device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.Exclusive);
-								//InformUser("Opened in exclusive mode.");
+								InformUser("Opened in exclusive mode.");
 							}
 							catch
 							{
 								device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.ShareRead | ShareMode.ShareWrite);
-								//InformUser("Opened in shared mode.");
+								InformUser("Opened in shared mode.");
 							}
 						}
 						else
 						{
 							device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.ShareRead | ShareMode.ShareWrite);
-							//InformUser("Opened in shared mode.");
+							InformUser("Opened in shared mode.");
 						}
 					}
 
-					//byte[] vibration = { 0x20, 0x00, 0x00 };
-					//if (device.WriteFeatureData(vibration) == false)
+					//byte[] vibration = { 0x05, 0x00, 0x00, 0x00, 0x00 };
+					//if (device.Write(vibration) == false)
 					//{
 					//	InformUser("Could not write to gamepad (is it closed?), skipping");
 					//	device.CloseDevice();
@@ -177,6 +177,7 @@ namespace StadiaToSCP
 				if (Gamepads.Count != nrConnected)
 				{
 					InformUser($"{Gamepads.Count} controllers connected");
+					nrConnected = Gamepads.Count;
 				}
 				//Thread.Sleep(1000);
 			}

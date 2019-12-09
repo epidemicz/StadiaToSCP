@@ -34,8 +34,7 @@ namespace StadiaToSCP
 
 		public bool check_connected()
 		{
-			return true;
-			//Device.WriteFeatureData(Vibration);
+			return true;//Device.Write(Vibration);
 		}
 
 		public void unplug()
@@ -61,7 +60,7 @@ namespace StadiaToSCP
 					local_vibration[1] = Vibration[1];
 					rumble_mutex.ReleaseMutex();
 					Device.Write(local_vibration);
-					Console.WriteLine("Small Motor: {0}, Big Motor: {1}", Vibration[3], Vibration[1]);
+					//Console.WriteLine("Small Motor: {0}, Big Motor: {1}", Vibration[3], Vibration[1]);
 				}
 				else
 				{
@@ -75,7 +74,7 @@ namespace StadiaToSCP
 		{
 			scpBus.PlugIn(index);
 			X360Controller controller = new X360Controller();
-			int timeout = 10000;
+			int timeout = 100;
 			long last_changed = 0;
 			long last_mi_button = 0;
 			while (Running)
@@ -85,6 +84,7 @@ namespace StadiaToSCP
 				bool changed = false;
 				if (data.Status == HidDeviceData.ReadStatus.Success && currentState.Length >= 10 && currentState[0] == 3)
 				{
+					// NOTE: Console.WriteLine is blocking. If main thread sends a WriteLine while we do a WriteLine here, we're boned and will miss reports!
 					//Console.WriteLine(Program.ByteArrayToHexString(currentState));
 					
 					X360Buttons Buttons = X360Buttons.None;
