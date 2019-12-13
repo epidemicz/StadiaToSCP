@@ -13,6 +13,7 @@ namespace StadiaToSCP
 		private ScpBus ScpBus;
 		private byte[] Vibration = { 0x05, 0x00, 0x00, 0x00, 0x00 };
 		private Mutex rumble_mutex = new Mutex();
+		AutoResetEvent rumbleWaitHandle = new AutoResetEvent( false );
 		private bool Running = true;
 		//private byte[] enableAccelerometer = { 0x31, 0x01, 0x08 };
 
@@ -51,22 +52,14 @@ namespace StadiaToSCP
 			byte[] local_vibration = { 0x05, 0x00, 0x00, 0x00, 0x00 };
 			while (Running)
 			{
+				rumbleWaitHandle.WaitOne();
 				rumble_mutex.WaitOne();
-				if (local_vibration[3] != Vibration[3] || Vibration[1] != local_vibration[1])
-				{
-					local_vibration[4] = Vibration[3];
-					local_vibration[3] = Vibration[3];
-					local_vibration[2] = Vibration[1];
-					local_vibration[1] = Vibration[1];
-					rumble_mutex.ReleaseMutex();
-					Device.Write(local_vibration);
-					//Console.WriteLine("Small Motor: {0}, Big Motor: {1}", Vibration[3], Vibration[1]);
-				}
-				else
-				{
-					rumble_mutex.ReleaseMutex();
-				}
-				Thread.Sleep(20);
+				local_vibration[4] = Vibration[3];
+				local_vibration[2] = Vibration[1];
+				rumble_mutex.ReleaseMutex();
+				local_vibration[3] = local_vibration[4];
+				local_vibration[1] = local_vibration[2];
+				Device.Write(local_vibration);
 			}
 		}
 
@@ -74,16 +67,16 @@ namespace StadiaToSCP
 		{
 			scpBus.PlugIn(index);
 			X360Controller controller = new X360Controller();
-			int timeout = 100;
-			long last_changed = 0;
-			long last_mi_button = 0;
+			int timeout = 10;
+			//long last_changed = 0;
+			//long last_mi_button = 0;
 			bool ss_button_pressed = false;
 			bool ss_button_held = false;
 			while (Running)
 			{
 				HidDeviceData data = Device.Read(timeout);
 				var currentState = data.Data;
-				bool changed = false;
+				//bool changed = false;
 				if (data.Status == HidDeviceData.ReadStatus.Success && currentState.Length >= 10 && currentState[0] == 3)
 				{
 					// NOTE: Console.WriteLine is blocking. If main thread sends a WriteLine while we do a WriteLine here, we're boned and will miss reports!
@@ -136,15 +129,14 @@ namespace StadiaToSCP
 
 					if ((currentState[2] &  16) != 0)
 					{
-						last_mi_button = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+						//last_mi_button = (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
 						Buttons |= X360Buttons.Logo;
 					}
-					if (last_mi_button != 0) Buttons |= X360Buttons.Logo;
 
 
-					if (controller.Buttons != Buttons)
+					//if (controller.Buttons != Buttons)
 					{
-						changed = true;
+						//changed = true;
 						controller.Buttons = Buttons;
 					}
 
@@ -167,9 +159,9 @@ namespace StadiaToSCP
 						LeftStickXunsigned = 0xFFFF;
 					short LeftStickX = (short)( LeftStickXunsigned - 0x8000 );
 					
-					if (LeftStickX != controller.LeftStickX)
+					//if (LeftStickX != controller.LeftStickX)
 					{
-						changed = true;
+					//	changed = true;
 						controller.LeftStickX = LeftStickX;
 					}
 
@@ -179,9 +171,9 @@ namespace StadiaToSCP
 					short LeftStickY = (short)( -LeftStickYunsigned + 0x7FFF );
 					if (LeftStickY == -1)
 						LeftStickY = 0;
-					if (LeftStickY != controller.LeftStickY)
+					//if (LeftStickY != controller.LeftStickY)
 					{
-						changed = true;
+					//	changed = true;
 						controller.LeftStickY = LeftStickY;
 					}
 
@@ -190,9 +182,9 @@ namespace StadiaToSCP
 						RightStickXunsigned = 0xFFFF;
 					short RightStickX = (short)( RightStickXunsigned - 0x8000 );
 					
-					if (RightStickX != controller.RightStickX)
+					//if (RightStickX != controller.RightStickX)
 					{
-						changed = true;
+					//	changed = true;
 						controller.RightStickX = RightStickX;
 					}
 
@@ -203,31 +195,32 @@ namespace StadiaToSCP
 					if (RightStickY == -1)
 						RightStickY = 0;
 					
-					if (RightStickY != controller.RightStickY)
+					//if (RightStickY != controller.RightStickY)
 					{
-						changed = true;
+					//	changed = true;
 						controller.RightStickY = RightStickY;
 					}
 
-					if (controller.LeftTrigger != currentState[8])
+					//if (controller.LeftTrigger != currentState[8])
 					{
-						changed = true;
+					//	changed = true;
 						controller.LeftTrigger = currentState[8];
 					}
 
-					if (controller.RightTrigger != currentState[9])
+					//if (controller.RightTrigger != currentState[9])
 					{
-						changed = true;
+					//	changed = true;
 						controller.RightTrigger = currentState[9];
 					}
 				}
 
+				/*
 				if (data.Status == HidDeviceData.ReadStatus.WaitTimedOut || (!changed && ((last_changed + timeout) < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond))))
 				{
 					changed = true;
-				}
+				}*/
 
-				if (changed)
+				//if (changed)
 				{
 					//Console.WriteLine("changed");
 					//Console.WriteLine((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond));
@@ -238,25 +231,19 @@ namespace StadiaToSCP
 					{
 						byte bigMotor = outputReport[3];
 						byte smallMotor = outputReport[4];
-						rumble_mutex.WaitOne();
+
 						if (smallMotor != Vibration[3] || Vibration[1] != bigMotor)
 						{
+							// We only need to take the mutex if we're modifying the data
+							rumble_mutex.WaitOne();
 							Vibration[1] = bigMotor;
 							Vibration[3] = smallMotor;
-						}
-						rumble_mutex.ReleaseMutex();
-					}
-
-					if (last_mi_button != 0)
-					{
-						if ((last_mi_button + 100) < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond))
-						{
-							last_mi_button = 0;
-							controller.Buttons ^= X360Buttons.Logo;
+							rumble_mutex.ReleaseMutex();
+							rumbleWaitHandle.Set();
 						}
 					}
 
-					last_changed = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+					//last_changed = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 				}
 
 				if (ss_button_pressed && !ss_button_held)
