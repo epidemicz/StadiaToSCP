@@ -9,7 +9,7 @@ namespace StadiaToSCP
 	{
 		public HidDevice Device { get; set; }
 		public int Index;
-		private Thread rThread, iThread;
+		private Thread rThread, iThread, ssThread;
 		private ScpBus ScpBus;
 		private byte[] Vibration = { 0x05, 0x00, 0x00, 0x00, 0x00 };
 		private Mutex rumble_mutex = new Mutex();
@@ -77,6 +77,8 @@ namespace StadiaToSCP
 			int timeout = 100;
 			long last_changed = 0;
 			long last_mi_button = 0;
+			bool ss_button_pressed = false;
+			bool ss_button_held = false;
 			while (Running)
 			{
 				HidDeviceData data = Device.Read(timeout);
@@ -96,13 +98,37 @@ namespace StadiaToSCP
 					if ((currentState[3] &   2) != 0) Buttons |= X360Buttons.RightBumper;
 					if ((currentState[3] &   1) != 0) Buttons |= X360Buttons.LeftStick;
 					if ((currentState[2] & 128) != 0) Buttons |= X360Buttons.RightStick;
+					ss_button_pressed = ( currentState[2] & 1 ) != 0;
+					// [2] & 2 == Assistant, [2] & 1 == Screenshot
 
-					//if (currentState[1] != 8)
+					switch (currentState[1])
 					{
-						if (currentState[1] == 0 || currentState[1] == 1 || currentState[1] == 7) Buttons |= X360Buttons.Up;
-						if (currentState[1] == 4 || currentState[1] == 3 || currentState[1] == 5) Buttons |= X360Buttons.Down;
-						if (currentState[1] == 6 || currentState[1] == 5 || currentState[1] == 7) Buttons |= X360Buttons.Left;
-						if (currentState[1] == 2 || currentState[1] == 1 || currentState[1] == 3) Buttons |= X360Buttons.Right;
+						default:
+							break;
+						case 0:
+							Buttons |= X360Buttons.Up;
+							break;
+						case 1:
+							Buttons |= X360Buttons.UpRight;
+							break;
+						case 2:
+							Buttons |= X360Buttons.Right;
+							break;
+						case 3:
+							Buttons |= X360Buttons.DownRight;
+							break;
+						case 4:
+							Buttons |= X360Buttons.Down;
+							break;
+						case 5:
+							Buttons |= X360Buttons.DownLeft;
+							break;
+						case 6:
+							Buttons |= X360Buttons.Left;
+							break;
+						case 7:
+							Buttons |= X360Buttons.UpLeft;
+							break;
 					}
 
 					if ((currentState[2] &  32) != 0) Buttons |= X360Buttons.Start;
@@ -122,9 +148,24 @@ namespace StadiaToSCP
 						controller.Buttons = Buttons;
 					}
 
-					short LeftStickX = (short)((Math.Max(-127.0, currentState[4] - 128) / 127) * 32767);
-					if (LeftStickX == -32767)
-						LeftStickX = -32768;
+					// Note: The HID reports do not allow stick values of 00.
+					// This seems to make sense: 0x80 is center, so usable values are:
+					// 0x01 to 0x7F and 0x81 to 0xFF.
+					// For our purposes I believe this is undesirable. Subtract 1 from negative
+					// values to allow maxing out the stick values.
+					// TODO: Get an Xbox controller and verify this is standard behavior.
+					for( int i = 4; i <= 7; ++i )
+					{
+						if( currentState[i] <= 0x7F && currentState[i] > 0x00 )
+						{
+							currentState[i] -= 0x01;
+						}
+					}
+
+					ushort LeftStickXunsigned = (ushort)( currentState[4] << 8 | ( currentState[4] << 1 & 255 ) );
+					if (LeftStickXunsigned == 0xFFFE)
+						LeftStickXunsigned = 0xFFFF;
+					short LeftStickX = (short)( LeftStickXunsigned - 0x8000 );
 					
 					if (LeftStickX != controller.LeftStickX)
 					{
@@ -132,19 +173,22 @@ namespace StadiaToSCP
 						controller.LeftStickX = LeftStickX;
 					}
 
-					short LeftStickY = (short)((Math.Max(-127.0, currentState[5] - 128) / 127) * -32767);
-					if (LeftStickY == -32767)
-						LeftStickY = -32768;
-					
+					ushort LeftStickYunsigned = (ushort)( currentState[5] << 8 | ( currentState[5] << 1 & 255 ) );
+					if (LeftStickYunsigned == 0xFFFE)
+						LeftStickYunsigned = 0xFFFF;
+					short LeftStickY = (short)( -LeftStickYunsigned + 0x7FFF );
+					if (LeftStickY == -1)
+						LeftStickY = 0;
 					if (LeftStickY != controller.LeftStickY)
 					{
 						changed = true;
 						controller.LeftStickY = LeftStickY;
 					}
 
-					short RightStickX = (short)((Math.Max(-127.0, currentState[6] - 128) / 127) * 32767);
-					if (RightStickX == -32767)
-						RightStickX = -32768;
+					ushort RightStickXunsigned = (ushort)( currentState[6] << 8 | ( currentState[6] << 1 & 255 ) );
+					if (RightStickXunsigned == 0xFFFE)
+						RightStickXunsigned = 0xFFFF;
+					short RightStickX = (short)( RightStickXunsigned - 0x8000 );
 					
 					if (RightStickX != controller.RightStickX)
 					{
@@ -152,9 +196,12 @@ namespace StadiaToSCP
 						controller.RightStickX = RightStickX;
 					}
 
-					short RightStickY = (short)((Math.Max(-127.0, currentState[7] - 128) / 127) * -32767);
-					if (RightStickY == -32767)
-						RightStickY = -32768;
+					ushort RightStickYunsigned = (ushort)( currentState[7] << 8 | ( currentState[7] << 1 & 255 ) );
+					if (RightStickYunsigned == 0xFFFE)
+						RightStickYunsigned = 0xFFFF;
+					short RightStickY = (short)( -RightStickYunsigned + 0x7FFF );
+					if (RightStickY == -1)
+						RightStickY = 0;
 					
 					if (RightStickY != controller.RightStickY)
 					{
@@ -172,7 +219,6 @@ namespace StadiaToSCP
 					{
 						changed = true;
 						controller.RightTrigger = currentState[9];
-
 					}
 				}
 
@@ -211,6 +257,24 @@ namespace StadiaToSCP
 					}
 
 					last_changed = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+				}
+
+				if (ss_button_pressed && !ss_button_held)
+				{
+					ss_button_held = true;
+					try
+					{
+						// TODO: Allow configuring this keybind.
+						ssThread = new Thread( () => System.Windows.Forms.SendKeys.SendWait( "^+Z" ) );
+						ssThread.Start();
+					}
+					catch
+					{
+					}
+				}
+				else if (ss_button_held && !ss_button_pressed)
+				{
+					ss_button_held = false;
 				}
 			}
 		}

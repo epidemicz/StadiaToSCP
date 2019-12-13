@@ -14,6 +14,10 @@ namespace ScpDriverInterface
 		Down = 1 << 1,
 		Left = 1 << 2,
 		Right = 1 << 3,
+		UpLeft = Up | Left,
+		UpRight = Up | Right,
+		DownLeft = Down | Left,
+		DownRight = Down | Right,
 
 		Start = 1 << 4,
 		Back = 1 << 5,
